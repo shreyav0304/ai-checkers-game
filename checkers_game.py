@@ -10,18 +10,30 @@ PADDING = 40
 BOARD_POS = (PADDING, (HEIGHT - BOARD_SIZE) // 2)
 
 # Colors
-COLOR_BG = (17, 24, 39); COLOR_CARD = (31, 41, 55); COLOR_BORDER = (75, 85, 99)
-COLOR_DARK_SQUARE = (125, 94, 63); COLOR_LIGHT_SQUARE = (240, 217, 181)
-COLOR_RED_PIECE = (200, 70, 70); COLOR_BLACK_PIECE = (47, 47, 47)
-COLOR_KING = (255, 215, 0); COLOR_GREEN = (22, 163, 74); COLOR_BLUE = (59, 130, 246)
-COLOR_PURPLE = (139, 92, 246); COLOR_GHOST = (55, 65, 81); COLOR_TEXT = (229, 231, 235)
-COLOR_LABEL = (156, 163, 175); COLOR_VALID_MOVE = (255, 255, 255, 100)
-COLOR_SELECTED_GLOW = (59, 130, 246, 100); COLOR_HINT_GLOW = (22, 163, 74, 150)
+COLOR_BG = (17, 24, 39)
+COLOR_CARD = (31, 41, 55)
+COLOR_BORDER = (75, 85, 99)
+COLOR_DARK_SQUARE = (125, 94, 63)
+COLOR_LIGHT_SQUARE = (240, 217, 181)
+COLOR_RED_PIECE = (200, 70, 70)
+COLOR_BLACK_PIECE = (47, 47, 47)
+COLOR_KING = (255, 215, 0)
+COLOR_GREEN = (22, 163, 74)
+COLOR_BLUE = (59, 130, 246)
+COLOR_PURPLE = (139, 92, 246)
+COLOR_GHOST = (55, 65, 81)
+COLOR_TEXT = (229, 231, 235)
+COLOR_LABEL = (156, 163, 175)
+COLOR_VALID_MOVE = (255, 255, 255, 100)
+COLOR_SELECTED_GLOW = (59, 130, 246, 100)
+COLOR_HINT_GLOW = (22, 163, 74, 150)
 
 # Game Constants
 ROWS, COLS = 8, 8
 SQUARE_SIZE = BOARD_SIZE // COLS
-EMPTY = 0; RED, BLACK = 1, 2; KING_R, KING_B = 3, 4
+EMPTY = 0
+RED, BLACK = 1, 2
+KING_R, KING_B = 3, 4
 
 # --- Sound Manager ---
 class SoundManager:
@@ -46,8 +58,10 @@ class SoundManager:
 # --- Game Logic Class ---
 class Board:
     def __init__(self):
-        self.board_state = []; self.red_left = self.black_left = 12
-        self.red_kings = self.black_kings = 0; self.create_board()
+        self.board_state = []
+        self.red_left = self.black_left = 12
+        self.red_kings = self.black_kings = 0
+        self.create_board()
 
     def clone(self):
         new_board = Board()
@@ -67,19 +81,25 @@ class Board:
             [EMPTY, RED,   EMPTY, RED,   EMPTY, RED,   EMPTY, RED],
             [RED,   EMPTY, RED,   EMPTY, RED,   EMPTY, RED,   EMPTY]
         ]
-        self.red_left = self.black_left = 12; self.red_kings = self.black_kings = 0
+        self.red_left = self.black_left = 12
+        self.red_kings = self.black_kings = 0
 
     def move(self, piece_pos, move_pos):
-        start_row, start_col = piece_pos; end_row, end_col = move_pos
+        start_row, start_col = piece_pos
+        end_row, end_col = move_pos
         piece = self.board_state[start_row][start_col]
-        self.board_state[end_row][end_col] = piece; self.board_state[start_row][start_col] = EMPTY
+        self.board_state[end_row][end_col] = piece
+        self.board_state[start_row][start_col] = EMPTY
+
         is_capture = abs(start_row - end_row) == 2
         if is_capture:
             mid_row, mid_col = (start_row + end_row) // 2, (start_col + end_col) // 2
             if self.board_state[mid_row][mid_col] in (RED, KING_R): self.red_left -= 1
             else: self.black_left -= 1
             self.board_state[mid_row][mid_col] = EMPTY
-        self.check_for_promotion(end_row, end_col); self.update_king_count()
+
+        self.check_for_promotion(end_row, end_col)
+        self.update_king_count()
         return is_capture
 
     def check_for_promotion(self, r, c):
@@ -96,6 +116,7 @@ class Board:
     def get_all_valid_moves(self, color):
         all_moves = {}
         has_jump = any(self._get_jumps((r, c)) for r in range(ROWS) for c in range(COLS) if self.is_own_piece(self.get_piece(r, c), color))
+        
         for r in range(ROWS):
             for c in range(COLS):
                 if self.is_own_piece(self.get_piece(r, c), color):
@@ -274,7 +295,9 @@ class Game:
         if self.selected_piece:
             if (row, col) in self.valid_moves:
                 self.execute_move(self.selected_piece, (row, col))
-            else:
+            elif self.selected_piece == (row, col): # Clicking the same piece deselects it
+                self.selected_piece, self.valid_moves = None, {}
+            else: # Clicking another piece, try to select it
                 self.selected_piece, self.valid_moves = None, {}
                 self.handle_board_click(pos)
         else:
@@ -356,10 +379,9 @@ class Game:
                 pygame.draw.rect(self.screen,color,(BOARD_POS[0]+c*SQUARE_SIZE,BOARD_POS[1]+r*SQUARE_SIZE,SQUARE_SIZE,SQUARE_SIZE))
         
         if self.best_move_hint and not self.selected_piece:
-            # Only show hint in training mode for red, or in any mode if timer is up
             show_hint = (self.game_mode == 'training' and self.turn == RED) or \
-                        (self.game_mode in ['ai', '2p'])
-            if show_hint:
+                        (self.game_mode in ['ai', '2p'] and ((pygame.time.get_ticks() - self.turn_start_time) / 1000 >= 10))
+            if show_hint and self.best_move_hint:
                 start_pos, end_pos = self.best_move_hint
                 for r, c in [start_pos, end_pos]:
                     s = pygame.Surface((SQUARE_SIZE, SQUARE_SIZE), pygame.SRCALPHA); s.fill(COLOR_HINT_GLOW)
